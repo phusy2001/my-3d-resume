@@ -720,8 +720,8 @@
        ═══════════════════════════════════════════════════════════ */
     const bookshelfGroup = new THREE.Group();
     {
-      const wood = mat(0x4a2f18, { roughness: 0.72 });
-      const dark = mat(0x2c1c0e, { roughness: 0.75 });
+      const wood = mat(0x9a7c4a, { roughness: 0.75 });
+      const dark = mat(0x6b5638, { roughness: 0.78 });
 
       // Frame sides
       const makePanel = (w, h, d, x, y, z) => {
@@ -730,13 +730,13 @@
         m.castShadow = m.receiveShadow = true;
         bookshelfGroup.add(m);
       };
-      makePanel(0.09, 3.2, 0.45, -0.73, 0, 0);   // left side
-      makePanel(0.09, 3.2, 0.45, 0.73, 0, 0);   // right side
-      makePanel(1.55, 0.09, 0.45, 0, -1.55, 0); // bottom
-      makePanel(1.55, 0.09, 0.45, 0, 1.55, 0); // top
-      makePanel(1.55, 0.06, 0.43, 0, -0.78, 0); // shelf 1
-      makePanel(1.55, 0.06, 0.43, 0, 0.10, 0); // shelf 2
-      makePanel(1.55, 0.06, 0.43, 0, 0.98, 0); // shelf 3
+      makePanel(0.12, 3.2, 0.45, -0.73, 0, 0);   // left side
+      makePanel(0.12, 3.2, 0.45, 0.73, 0, 0);   // right side
+      makePanel(1.55, 0.12, 0.45, 0, -1.55, 0); // bottom
+      makePanel(1.55, 0.12, 0.45, 0, 1.55, 0); // top
+      makePanel(1.55, 0.08, 0.43, 0, -0.78, 0); // shelf 1
+      makePanel(1.55, 0.08, 0.43, 0, 0.10, 0); // shelf 2
+      makePanel(1.55, 0.08, 0.43, 0, 0.98, 0); // shelf 3
 
       // Back panel (darker)
       const back = new THREE.Mesh(new THREE.BoxGeometry(1.46, 3.1, 0.04), dark);
@@ -824,23 +824,24 @@
       star.position.set(0.15, 1.83, 0.04);
       bookshelfGroup.add(star);
 
-      // Legs — support the bookshelf at corners
+      // Legs — support the bookshelf at corners (extend below the base)
       const legPositions = [
-        [-0.65, -0.78, -0.18],  // front-left
-        [-0.65, -0.78, 0.18],   // back-left
-        [0.65, -0.78, -0.18],   // front-right
-        [0.65, -0.78, 0.18],    // back-right
+        [-0.63, -2.15, -0.18],  // front-left
+        [-0.63, -2.15, 0.18],   // back-left
+        [0.63, -2.15, -0.18],   // front-right
+        [0.63, -2.15, 0.18],    // back-right
       ];
       legPositions.forEach(([x, y, z]) => {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.6, 0.06), wood);
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 0.08), wood);
         leg.position.set(x, y, z);
         leg.castShadow = leg.receiveShadow = true;
         bookshelfGroup.add(leg);
       });
     }
     // Against right wall, back corner — big and prominent
+    bookshelfGroup.rotation.set(0, 0, 0);  // Ensure perfectly vertical
     bookshelfGroup.position.set(3.5, 1.85, -7.2);
-    bookshelfGroup.scale.set(1.25, 1.25, 1.25);
+    bookshelfGroup.scale.set(1.2, 1.2, 1.2);
     scene.add(bookshelfGroup);
 
     /* ═══════════════════════════════════════════════════════════
@@ -1696,7 +1697,7 @@
     //   window.simTime = new Date(2024,0,1, 23,0,0)  → jump to 11 PM
     //   window.simTime = null                         → back to real time
     //   window.setSimHour(7)                          → shorthand
-    window.simTime = new Date(2024,0,1, 8,0,0);
+    window.simTime = null;
     window.setSimHour = (h, m = 0) => {
       window.simTime = new Date(2024, 0, 1, h, m, 0);
       charState = 'sitting';          // reset so transitions re-fire
