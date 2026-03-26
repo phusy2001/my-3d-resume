@@ -8,7 +8,8 @@ An interactive 3D portfolio experience built with Three.js — explore a fully r
 
 ## Preview
 
-![3D Resume Preview](preview.png)
+![3D Resume Preview](preview-day.png)
+![3D Resume Preview](preview-night.png)
 
 ---
 
