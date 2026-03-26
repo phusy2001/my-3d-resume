@@ -609,9 +609,10 @@
       lampGroup.userData.shadeMat = shadeMat;
       lampGroup.userData.bulb = bulb;
     }
+    // Initialize lamp visuals based on initial lampOn state
+    updateLampVisuals();
 
-    function toggleLamp() {
-      lampOn = !lampOn;
+    function updateLampVisuals() {
       const shadeMat = lampGroup.userData.shadeMat;
       const bulb = lampGroup.userData.bulb;
       if (lampOn) {
@@ -625,6 +626,11 @@
         shadeMat.emissiveIntensity = 0;
         bulb.material.emissiveIntensity = 0;
       }
+    }
+
+    function toggleLamp() {
+      lampOn = !lampOn;
+      updateLampVisuals();
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -1563,12 +1569,17 @@
         charState = 'sleeping';
         characterGroup.visible = false;
         bedBodyLump.visible = true;
+        lampOn = true;  // Lamp is ON when sleeping at night
+      } else {
+        lampOn = false; // Lamp is OFF when sitting at desk during day
       }
     }
 
     function startGoingToBed() {
       if (charState !== 'sitting') return;
       charState = 'going_to_bed';
+      lampOn = true;  // Turn lamp ON when going to sleep
+      updateLampVisuals();
       const proxy = {
         px: characterGroup.position.x,
         pz: characterGroup.position.z,
@@ -1606,7 +1617,11 @@
           characterGroup.position.set(proxy.px, 0, proxy.pz);
           characterGroup.rotation.y = proxy.ry;
         },
-        onComplete() { charState = 'sitting'; }
+        onComplete() {
+          charState = 'sitting';
+          lampOn = false;  // Turn lamp OFF when sitting at desk
+          updateLampVisuals();
+        }
       });
     }
 
@@ -2484,6 +2499,12 @@
     function startIntro() {
       setProgress(100, 'Ready!');
       setTimeout(() => {
+        // Pre-load all visual states before revealing the scene
+        updateLampVisuals();
+        updateClock();
+        updateWallFrameTime(new Date());
+        updateRoomLighting(new Date());
+
         document.getElementById('loading-screen').classList.add('hidden');
         isAnimating = true;
         const proxy = { t: 0 };
