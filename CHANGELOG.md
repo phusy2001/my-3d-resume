@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.0] — 2026-03-27
+
+### Changed
+- Rewrote README to reflect SvelteKit 2 + Svelte 5 + TypeScript architecture
+- Added CHANGELOG
+
+---
+
 ## [0.1.0] — 2026-03-27
 
 ### Added
