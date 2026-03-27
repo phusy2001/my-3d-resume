@@ -8,7 +8,7 @@
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 	import gsap from 'gsap';
 
-	import { setProgress, setFocus, lamp, setWebGLSupport, updateClock } from '$lib/stores/scene.svelte.js';
+	import { setProgress, setFocus, focus, lamp, setWebGLSupport, updateClock } from '$lib/stores/scene.svelte.js';
 	import { openPanel, closePanel } from '$lib/stores/ui.svelte.js';
 
 	let canvasEl: HTMLCanvasElement;
@@ -42,6 +42,7 @@
 	let labelEls: Record<string, HTMLElement> = {};
 	let labelDefs: any[] = [];
 	let interactiveObjects: any[] = [];
+	let focusObjectFn: ((obj: any) => void) | null = null;
 	let hourPivot: THREE.Group, minPivot: THREE.Group, secPivot: THREE.Group;
 	let winPaneMats: THREE.MeshStandardMaterial[] = [];
 	let winLightRef: THREE.PointLight;
@@ -75,7 +76,10 @@
 
 	// ── $effect: focus store → Three.js (from nav dots) ──────────────────────
 	$effect(() => {
-		// handled inside click/navdot handler — this just resets when key goes null
+		const key = focus.key;
+		if (!key || !focusObjectFn) return;
+		const obj = interactiveObjects.find((o: any) => o.key === key);
+		if (obj && (!focusedObject || focusedObject.key !== key)) focusObjectFn(obj);
 	});
 
 	onMount(() => {
@@ -815,7 +819,10 @@
 			{ mesh: laptopGroup, key: 'laptop', camPos: new THREE.Vector3(-0.1, 2.1, -4.5), camTarget: new THREE.Vector3(-0.3, 1.2, -6.5) },
 			{ mesh: bookshelfGroup, key: 'bookshelf', camPos: new THREE.Vector3(1.6, 2.4, -5.5), camTarget: new THREE.Vector3(3.5, 2.0, -7.2) },
 			{ mesh: wallFrameGroup, key: 'frame', camPos: new THREE.Vector3(-1.7, 4.0, -6.5), camTarget: new THREE.Vector3(-1.8, 4.0, -8.5) },
-			{ mesh: characterGroup, key: 'character', camPos: new THREE.Vector3(-1.8, 2.0, -4.2), camTarget: new THREE.Vector3(-3.5, 0.6, -7.0) },
+			{ mesh: characterGroup, key: 'character', camPos: new THREE.Vector3(-2.5, 2.0, -5.0), camTarget: new THREE.Vector3(-3.5, 0.5, -7.1),
+			getMesh: () => charState === 'sleeping' ? bedBodyLump : characterGroup,
+			getCamPos: () => charState === 'sleeping' ? new THREE.Vector3(-2.5, 2.0, -5.0) : new THREE.Vector3(-0.2, 2.0, 0.8),
+			getCamTarget: () => charState === 'sleeping' ? new THREE.Vector3(-3.5, 0.5, -7.1) : new THREE.Vector3(1.6, 0.8, -2.2) },
 		];
 
 		const bedBodyMeshes = new Set<THREE.Object3D>();
@@ -942,17 +949,22 @@
 			});
 		}
 
+		function getActiveMesh(obj: any) { return obj.getMesh ? obj.getMesh() : obj.mesh; }
+
 		function focusObject(obj: any) {
-			if (hoveredObject) { clearEmissive(hoveredObject.mesh); hoveredObject = null; }
-			if (focusedObject && focusedObject !== obj) clearEmissive(focusedObject.mesh);
-			focusedObject = obj; setEmissive(obj.mesh, 0xaa88ff, 0.55);
+			if (hoveredObject) { clearEmissive(getActiveMesh(hoveredObject)); hoveredObject = null; }
+			if (focusedObject && focusedObject !== obj) clearEmissive(getActiveMesh(focusedObject));
+			focusedObject = obj; setEmissive(getActiveMesh(obj), 0xaa88ff, 0.55);
 			setFocus(obj.key);
-			animateCamera(obj.camPos, obj.camTarget);
+			const camPos = obj.getCamPos ? obj.getCamPos() : obj.camPos;
+			const camTarget = obj.getCamTarget ? obj.getCamTarget() : obj.camTarget;
+			animateCamera(camPos, camTarget);
 			setTimeout(() => openPanel(obj.key), 320);
 		}
+		focusObjectFn = focusObject;
 
 		function doResetCamera() {
-			if (focusedObject) { clearEmissive(focusedObject.mesh); focusedObject = null; }
+			if (focusedObject) { clearEmissive(getActiveMesh(focusedObject)); focusedObject = null; }
 			setFocus(null); closePanel();
 			animateCamera(DEFAULT_CAM_POS, DEFAULT_CAM_TARGET, () => { controls.enabled = true; });
 		}
@@ -961,13 +973,13 @@
 			if (isAnimating || focusedObject) return;
 			updatePointer(e); raycaster.setFromCamera(pointer, camera);
 			const lampHover = raycaster.intersectObjects(lampMeshes, false);
-			if (lampHover.length > 0) { if (hoveredObject) { clearEmissive(hoveredObject.mesh); hoveredObject = null; } canvasEl.style.cursor = 'pointer'; return; }
+			if (lampHover.length > 0) { if (hoveredObject) { clearEmissive(getActiveMesh(hoveredObject)); hoveredObject = null; } canvasEl.style.cursor = 'pointer'; return; }
 			const hits = raycaster.intersectObjects(allInteractiveMeshes, false);
-			if (hits.length > 0) {
-				const obj = resolveHit(hits[0].object);
-				if (obj && obj !== hoveredObject) { if (hoveredObject) clearEmissive(hoveredObject.mesh); hoveredObject = obj; setEmissive(hoveredObject.mesh, 0x9977ff, 0.4); }
+			const obj = hits.length > 0 ? resolveHit(hits[0].object) : null;
+			if (obj) {
+				if (obj !== hoveredObject) { if (hoveredObject) clearEmissive(getActiveMesh(hoveredObject)); hoveredObject = obj; setEmissive(getActiveMesh(hoveredObject), 0x9977ff, 0.4); }
 				canvasEl.style.cursor = 'pointer';
-			} else { if (hoveredObject) { clearEmissive(hoveredObject.mesh); hoveredObject = null; } canvasEl.style.cursor = 'default'; }
+			} else { if (hoveredObject) { clearEmissive(getActiveMesh(hoveredObject)); hoveredObject = null; } canvasEl.style.cursor = 'default'; }
 		});
 
 		window.addEventListener('click', (e: MouseEvent) => {
@@ -996,7 +1008,8 @@
 			const lampHits = raycaster.intersectObjects(lampMeshes, false);
 			if (lampHits.length > 0) { import('$lib/stores/scene.svelte.js').then(({ toggleLamp }) => toggleLamp()); return; }
 			const hits = raycaster.intersectObjects(allInteractiveMeshes, false);
-			if (hits.length > 0) { const obj = resolveHit(hits[0].object); if (obj) focusObject(obj); }
+			const obj = hits.length > 0 ? resolveHit(hits[0].object) : null;
+			if (obj) { focusObject(obj); } else if (focusedObject) { doResetCamera(); }
 		}, { passive: true });
 
 		window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
